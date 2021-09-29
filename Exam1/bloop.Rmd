@@ -1,0 +1,132 @@
+---
+title: "HW3a"
+author: "Angela Larkin"
+date: "10/5/2020"
+abstract: "Da biggest bloop"
+output: 
+  word_document: 
+    toc: true
+    #number_sections: true
+    #citation_package: pandoc-citeproc
+
+bibliography: ["bloop.bib"]
+biblio-style: "apalike"
+link-citations: true
+---
+
+https://bookdown.org/yihui/rmarkdown/pdf-document.html#table-of-contents-1
+
+https://pandoc.org/MANUAL.html#citations
+
+https://rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf
+
+https://stirlingcodingclub.github.io/Manuscripts_in_Rmarkdown/Rmarkdown_notes.html
+
+
+\newpage
+
+# Introduction
+
+# Literature Review
+
+# Results
+
+
+
+
+
+```{r}
+Lambda2F <- function(Lambda,dim,nuH,nuE,alpha=.05) #nuH is the number of groups - 1, nuE is number of observations - number of variables in y
+{
+  #dim is the number of variables you're taking out of the model
+	df1 <- dim*nuH
+	w <- nuH + nuE - .5*(dim+nuH+1)
+	t <- 1
+	if((dim^2 + nuH^2 - 5) > 0)
+		t <- sqrt((dim^2 * nuH^2 - 4)/(dim^2 + nuH^2 - 5))
+	df2 <- w*t - .5*(dim*nuH - 2)
+	Fstat <- (1-Lambda^(1/t))/(Lambda^(1/t)) * df2/df1
+	critval <- qf(1-alpha,df1,df2)
+	pval <- 1 - pf(Fstat,df1,df2)
+	return(list(Lambda,w,t,df1,df2,Fstat,critval,pval))
+}
+
+# sowdate:
+# full: 0.00064500
+# reduced: 0.00527159
+lamzy <- 0.00064500/0.00527159
+#fval <- Lambda2F(lamzy, 2, 3, 60-2) #incorrect
+fval <- Lambda2F(lamzy, 2, 3, 60 - 12 - 2) #the last argument is n - (# of groups) - (the number of variables we are conditioning on or the # of variables in y (see slides3 slide 71))
+fval[[8]] #p-value
+
+# variety:
+# full: 0.06530009
+# reduced: 0.06994306
+lamzy <- 0.06530009/0.06994306
+fval <- Lambda2F(lamzy, 2, 3, 60-2)
+fval[[8]] #p-value
+
+# interaction:
+# full: 0.13794739
+# reduced: 0.21546479
+lamzy <- 0.13794739/0.21546479
+fval <- Lambda2F(lamzy, 2, 3, 60-2)
+fval[[8]] #p-value
+
+```
+According to the above analysis, x3 and x4 are important variables to sowdate and the interaction in assessing trends but not to variety. 
+
+#e
+```{r}
+#variety
+e <- c(sqrt(11.896), sqrt(14.404), sqrt(13.656), sqrt(7245.6))
+
+variety <- matrix(c(0.27131451, -0.02672873, 0.05558050, 0.00170062), ncol = 1)
+diag(e) %*% variety
+
+
+sowdate <- matrix(c(0.20895364,	-0.05317724,	0.17493015,	-0.00429399), ncol = 1)
+diag(e) %*% sowdate
+
+interaction <- matrix(c(0.28266108,	-0.04609473,	0.02654888,	0.00025815), ncol = 1)
+diag(e) %*% interaction
+```
+
+Based on the standardized discriminant functions above (a-star), for variety, x1 is the most important. For sowdate, x1 and x3 are the most important and for the interaction x1 is the most important. @R-base 
+
+Bloop  @R-knitr
+
+Bloop2 @R-stringr
+
+
+# Summary of Conclusions
+
+# Future Recommendations
+
+
+\newpage 
+
+
+
+::: {#refs}
+:::
+
+
+```{r}
+knitr::write_bib(c('knitr', 'stringr'), '', width = 60)
+
+```
+
+
+\newpage
+
+# Appendix
+
+```{r ref.label = knitr::all_labels(), echo = TRUE, eval = FALSE}
+
+```
+
+
+
+
+
