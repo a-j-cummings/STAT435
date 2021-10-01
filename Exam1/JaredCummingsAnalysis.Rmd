@@ -6,12 +6,16 @@ abstract: "Abstract"
 output: 
   pdf_document: 
     toc: true
+    fig_width: 7
+    fig_height: 6
+    fig_caption: true
     #number_sections: true
     #citation_package: pandoc-citeproc
 
-#bibliography: [analysis1.bib"]
-#biblio-style: "apalike"
-#link-citations: true
+bibliography: analysis1.bib
+biblio-style: "apalike"
+link-citations: true
+urlcolor: blue
 ---
 ```{r, setup, include=FALSE}
 library(tidyverse)
@@ -23,18 +27,28 @@ farms <- read_csv('farms.csv') %>%
 
 # Introduction
 
-Scientific question: Even though the land is considered equally fertile, is there a difference in sale price-per-acre between properties in Fresno and Merced? If so, which area is a better deal for passive-income investing in small-cap farmland?
+For high net worth individuals and investment corporations, agricultural land can be an attractive vehicle for generating consistent revenue. To maximize returns, investors seek plots with high output at the lowest price. In California's central valley some of the most fertile soil for fruit and nut crops can be found. For an investor interested in expanding their holdings of small acrage farms (less than 120 acres) in this region who has already decided to target the cities of Fresno and Merced, should they prioritize one city over the other? Phrased differently, even though the land is considered equally fertile, is there a difference in sale price-per-acre between properties in Fresno and Merced? If so, which area is a better deal for passive-income investing in small-cap farmland?
 
-Statistical hypotheses: *depends on test chosen*
-
-Methodology: *depends on test chosen*
-
-Alpha level: $\alpha = 0.2$.
-
-<!-- # Literature Review -->
+In this analysis I test the hypothesis that there is no difference between the median price-per-acre of farms in Fresno and Merced using a Mann-Whitney U-test. For this test I determine statistical significance at the 0.2 level in order to align practical importance with the hypothesis decision.
 
 # Data
+
 The data used for this analysis is an exhaustive list of farmland transactions in the cities of Fresno and Merced, California in the years 2000-2020 where less than 120 acres were exchanged. Acreage and sale price (inflation adjusted) are recorded for each sale. We investigate the price-per-acre of the sales to investigate if there is a difference in land value between these two productive farm regions of California's central valley.
+
+```{r, summary_stats, echo = FALSE}
+farms %>% 
+  group_by(city) %>% 
+  summarise(n = n(),
+            Mean = mean(ppa),
+            StDev = sd(ppa),
+            Median = median(ppa),
+            IQR = diff(quantile(ppa, c(0.25, 0.75)))) %>% 
+  rename(City = city) %>% knitr::kable(digits = 2, caption = 'Summary statistics of small farm sale price-per-acre in the Fresno and Merced in 2000-2020.')
+```
+
+Table 1 gives summary statistics for the data, partitioned by city. For the Fresno data, we find that the mean and median are close, and the two measures of spread, the standard deviation and interquartile range (IQR) are also comparable. These similarities are incident to a relatively balanced dispersion of sale prices-per-acre in and around Fresno. For the Merced data, a larger discrepancy exists between the same measures of center and spread, indicating the likely presence of outliers. Attempted inference on the means of these two samples will have issues because of this. Analysis should instead focus on the difference in median price.
+
+Figure 1 displays the data in two boxplots, one for each city. The distribution of price-per-acre in both Fresno and Merced is visibly right skewed by the occasional high values shown as stand-alone points. This skewness more prominent in Merced than Fresno. Because of this data attribute, and because price-per-acre takes only positive values, the most popular method for testing differences between two sample averages, a two sample t-test, will not be able to give reliable results for this analysis. A different method, one that is robust to these quirks of our data and resistant to potential outliers will instead be employed. This decision is detailed more completely in the Methodology section.
 
 ```{r, boxplot, echo = FALSE, fig.cap = 'Boxplot comparison of price-per-acre of Fresno and Merced farm sales.', out.width='50%', fig.align='center'}
 ggplot(farms) + 
@@ -44,55 +58,82 @@ ggplot(farms) +
         axis.ticks.y=element_blank())
 ```
 
-```{r, summary_stats, echo = FALSE}
-farms %>% 
-  group_by(city) %>% 
-  summarise(n = n(),
-            Avg = mean(ppa),
-            StDev = sd(ppa),
-            Median = median(ppa),
-            IQR = diff(quantile(ppa, c(0.25, 0.75)))) %>% 
-  rename(City = city)# %>% knitr::kable(digits = 2, caption = 'Summary statistics of small farm sale price-per-acre in the Fresno and Merced in 2000-2020.')
+# Results
+
+Using prepackaged functions from @R-base, both a two-sample t-test and Mann-Whitney U-test were performed. Table 2 reports the p-values for the tests to three significant digits. For the t-test, the hypotheses tested were:
+<center>
+**$H_0:$ No difference in mean price-per-acre between Fresno and Merced**
+**$H_1:$ Difference in mean price-per-acre exists between Fresno and Merced**
+</center>
+For this application of the Mann-Whitney test, the hypotheses were similar:
+<center>
+**$H_0:$ No difference in median price-per-acre between Fresno and Merced**
+**$H_1:$ Difference in median price-per-acre exists between Fresno and Merced**
+</center>
+
+Though both tests fail to reject the null hypothesis at the $\alpha = 0.20$ level, there is not agreement between the two tests about the weight of evidence against the null hypotheses. The t-test indicates that there the evidence in favor of the alternate hypothesis is practically non-existant (p-value: 0.746) while the Mann-Whitney test makes it a near borderline decision (p-value: 0.225). If a single observation were added, the t-test would likely continue to fail to reject the null hypothesis, while the Mann-Whitney could very easily be tipped the other way.
+
+```{r, results, echo = FALSE}
+fresno <- farms %>% 
+  filter(city == 'Fresno') %>% 
+  select(ppa) %>% 
+  pull()
+merced <- farms %>% 
+  filter(city == 'Merced') %>% 
+  select(ppa) %>% 
+  pull()
+tibble(test = c('2-sample t-test', 'Mann-Whitney U-test'),
+       pvalue = c(t.test(merced, fresno, var.equal = TRUE)$p.value,
+                  wilcox.test(merced, fresno, paired = FALSE, exact = FALSE)$p.value)) %>% knitr::kable(digits = 3, caption = 'P-values for tests of equal mean/median')
 ```
 
-# Methodology
+# Conclusions and Recommendations
 
-## Level of significance
+On the basis of this analysis, I advise against favoring one market over the other. Comparative pricing information is available, and it appears that similarly strong investment opportunities can be found in both locales. The median price-per-acre in Fresno is not sufficiently different than the median price-per-acre in Merced to be of significant practical concern (p-value: 0.225).
+
+In stating this conclusion, it must be recognized that binary hypothesis testing may not adequately capture all aspects of real and perceived risk. Additional study on this question could be done using Bayesian methods that allow the incorporation of expert opinions and an expanded vocabulary of risk. To further confirm the findings of the study done in this report, I advise a simulation study to confirm that the power of the Mann-Whitney test is sufficient for the designated level of practical importance outlined in Appendix 2.
+
+In how this study was conducted, the benefit of using a nonparametric test cannot be overstated. As discussed in the Data section, there were clear reasons to be entirely skeptical of the results that could be gained through a classical t-test. The dramatic difference in the p-values that the parametric and nonparametric methods gave, as discussed in the Results section, is an indicator of the kinds of disparities that can result in the misapplication of statistical methods. Nonparametric tests, like the Mann-Whitney test, are a responsible option for fitting to a wider variety of data and should be adopted in more applications.
+
+\newpage 
+
+<!-- 
+bibliography will go here 
+
+Include reference books and R packages
+-->
+
+::: {#refs}
+:::
+
+\newpage
+
+# Appendix 1: Data and Code
+
+Data for this analysis is available at this [link]( https://github.com/a-j-cummings/STAT435/blob/8b95408a9087ed78b86eee7f8f602ae394bcbe14/Exam1/farms.csv).
+
+The code for this analysis can be found here.
+
+All figures are made with the ggplot2, first introduced in @wickham2011ggplot2.
+
+# Appendix 2: Selection of level of significance
 
 <!-- Why Type II error matters here -->
-In the context of agriculture investing, the risk associated with incorrectly concluding that there is a preferred price location when no material difference in per-acre price exists (type I error) is entirely realized in an unnecessary limiting of perspective properties. There is not a measurable financial cost to making this mistake. The consequence of incorrectly concluding that there is no difference in per-acre price (type II error) is much more substantial. If this mistake is made there could be substantial, unnecessary overpayment without a commensurate increase in returns. In clasical hypothesis testing, the level of significance, $\alpha$, represents the probability of making a type I error. To appropriately offset risk, we adjusted $\alpha$ to control the type II error probability of making a "practically significant" over payment of 20-25% of per-acre price. In making this adjustment we align practical significance with statistical significance.
+In the context of agriculture investing, the risk associated with incorrectly concluding that there is a preferred price location when no material difference in per-acre price exists (type I error) is entirely realized in an unnecessary limiting of perspective properties. There is not a measurable financial cost to making this mistake. The consequence of incorrectly concluding that there is no difference in per-acre price (type II error) is much more substantial. If this mistake is made there could be substantial, unnecessary overpayment without a commensurate increase in returns. In clasical hypothesis testing, the level of significance, $\alpha$, represents the probability of making a type I error. To appropriately offset risk, we adjusted $\alpha$ to control the type II error probability of making a "practically significant" over payment of at least 20-25% of per-acre price at roughly 0.05. In making this adjustment we align practical significance with statistical significance.
 
+Figure 2 shows the probability of type II error at this practically significant threshold as a function of the level of significance, $\alpha$, for a two-sample t-test with equal variance. As mentioned earlier, using this parameteric statistical procedure is not appropriate for this data. However, @Randles, indicate that in simulation studies performed by the authors, when the non-parametric equivalent of the two-sample t-test is applied to strictly positive and right skewed data the power of the test exceeds $1-\alpha$. By extrapolating their results to our sample sizes, it is safe to conclude that the type II error probability for the nonparametric test is bounded above by the two-sample t-test's type II error probability. In future work, a simulation study could be conducted to empirically confirm this behavior if more certainty in the method is desired.
 
-
-```{r, parametric_power, echo=FALSE, out.width='50%', fig.align='center'}
+```{r, parametric_power_prep, echo = FALSE}
 d <- 0.5 # corresponds to overpaying 20-25% (on average)
 m <- 31 # n farms in Fresno
 n <- 38 # n farms in Merced
 sigma <- sd(farms$ppa)
 alpha <- seq(0.0, 0.5, length.out = 100)
 power <- 1 - pt(qt(alpha, m+n-2), m+n-2, d*sqrt(m*n/(m+n))/sigma)
+```
 
+```{r, parametric_power, echo=FALSE, out.width='50%', fig.align='center', fig.cap='Type II error probability of two-sample t-test as a function of significance level if true difference between Fresno and Merced price-per-acre is 20 to 25 percent'}
 ggplot() + 
   geom_line(aes(alpha, 1-power)) +
   labs(x = latex2exp::TeX('$\\alpha$'), y = 'Pr(Type II error)')
 ```
-
-```{r}
-1 - pt(qt(.2, m+n-2), m+n-2, d*sqrt(m*n/(m+n))/sigma)
-```
-
-
-# Results
-
-# Summary of Conclusions
-
-# Future Recommendations
-
-
-\newpage 
-
-<!-- bibliography will go here -->
-
-\newpage
-
-# Appendix
