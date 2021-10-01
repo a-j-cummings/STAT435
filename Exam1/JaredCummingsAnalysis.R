@@ -1,6 +1,14 @@
 ## ---- setup, include=FALSE--------------------------------
 library(tidyverse)
+
+
 farms <- read_csv('farms.csv') %>% 
+  mutate(ppa = sale_price/acres/10000) %>% 
+  group_by(city) %>% 
+  sample_n(20) %>% 
+  ungroup()
+
+farms <- read_csv('farms2.csv') %>% 
   mutate(ppa = sale_price/acres/10000)
 
 
