@@ -1,10 +1,11 @@
-## ---- setup, include=FALSE--------------------------------
+## ---- setup, include=FALSE------------------------
 library(tidyverse)
 farms <- read_csv('farms.csv') %>% 
-  mutate(ppa = sale_price/acres/10000)
+  mutate(ppa = sale_price/acres)
+source('resampling_tests.R')
 
 
-## ---- summary_stats, echo = FALSE-------------------------
+## ---- summary_stats, echo = FALSE-----------------
 farms %>% 
   group_by(city) %>% 
   summarise(n = n(),
@@ -23,7 +24,7 @@ ggplot(farms) +
         axis.ticks.y=element_blank())
 
 
-## ---- results, echo = FALSE-------------------------------
+## ---- results, echo = FALSE-----------------------
 fresno <- farms %>% 
   filter(city == 'Fresno') %>% 
   select(ppa) %>% 
@@ -37,7 +38,15 @@ tibble(test = c('2-sample t-test', 'Mann-Whitney U-test'),
                   wilcox.test(merced, fresno, paired = FALSE, exact = FALSE)$p.value)) %>% knitr::kable(digits = 3, caption = 'P-values for tests of equal mean/median')
 
 
-## ---- parametric_power_prep, echo = FALSE-----------------
+## ---- perm_results, fig.cap = 'Results of Monto Carlo permutation test on difference in medians between Fresno and Merced small-acreage farm price-per-acre.', out.width='50%', fig.align='center', echo = FALSE----
+perm_fig
+
+
+## ---- boot_results, fig.cap = 'Results of bootstrap test on difference in medians between Fresno and Merced small-acreage farm price-per-acre.', out.width='50%', fig.align='center', echo = FALSE----
+boot_fig
+
+
+## ---- parametric_power_prep, echo = FALSE---------
 d <- 0.5 # corresponds to overpaying 20-25% (on average)
 m <- 31 # n farms in Fresno
 n <- 38 # n farms in Merced
