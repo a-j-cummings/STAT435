@@ -2,7 +2,7 @@
 title: "Fresno vs. Merced: Where should I invest in farmland?"
 author: "Jared Cummings"
 date: "September 2021"
-abstract: An analysis of the sale price-per-acre of small acrage farms (less that 120) in the Fresno and Merced areas. I conclude that there is not a statistically significant difference between the median prices in the two cities using the nonparametric Mann-Whitney U-test with at the $\alpha = 0.2$ level, a level of significance chosen to align practical significance with statistical significance. On the basis of this study there is not a data-driven reason to prefer investment in one location over another.
+abstract: An analysis of the sale price-per-acre of small acrage farms (less that 120) in the Fresno and Merced areas. I conclude that there is a statistically significant difference between the median prices in the two cities. Various nonparametric proceedures are compared to the conclusions reached by the classical two-sample t-test at the $\alpha = 0.2$ level, a level of significance chosen to align practical significance with statistical significance. On the basis of this study there is a data-driven reason to prefer investment in one location over another.
 output: 
   pdf_document: 
     toc: true
@@ -21,6 +21,7 @@ urlcolor: blue
 library(tidyverse)
 farms <- read_csv('farms.csv') %>% 
   mutate(ppa = sale_price/acres)
+source('resampling_tests.R')
 ```
 
 \newpage
@@ -88,13 +89,30 @@ tibble(test = c('2-sample t-test', 'Mann-Whitney U-test'),
                   wilcox.test(merced, fresno, paired = FALSE, exact = FALSE)$p.value)) %>% knitr::kable(digits = 3, caption = 'P-values for tests of equal mean/median')
 ```
 
+In addition to these two procedures, a Monte Carlo permutation test and bootstrap test were performed. Conceptually, these two tests "shuffle" which of the two groups the observed data fall into. Under the null hypothesis of these tests there is no difference in groups, so theoretically the test statistics derived under these tests should be very similar to the value actually observed if the null hypothesis is true. For these tests, a difference in medians was computed as the test statistic. The hypotheses for both tests are the same as for the Mann-Whitney test.
+
+A Monte Carlo permutation test shuffles the data by sampling without replacement from it. This is in contrast to an exact permutation test in which every possible permutation of the data (again, without repeating values) is defined and a test statistic computed. The exact test is prohibitive for data that is "large" in the classical sense, so for this application we apply only the Monte Carlo version. Figure 2 reports the results of the Monte Carlo permutation test with Monte Carlo error assessed on the p-value.
+
+\newpage
+```{r, perm_results, fig.cap = 'Results of Monto Carlo permutation test on difference in medians between Fresno and Merced small-acreage farm price-per-acre.', out.width='50%', fig.align='center', echo = FALSE}
+perm_fig
+```
+
+
+The distinction between a permutation test and the bootstrap test is not arbitrary. Unlike a permutation test, a bootstrap test shuffles the data by sampling with replacement. This results in an symmetric and bell-curved distribution that is an always-available tool for evaluating uncertainty in many statistical applications. The nonparametric bootstrap is one of the greatest advances in computer age statistical inference. Figure 3 gives the results of the bootstrap test on this farmland data, with Monte Carlo error assessed on the p-value.
+
+```{r, boot_results, fig.cap = 'Results of bootstrap test on difference in medians between Fresno and Merced small-acreage farm price-per-acre.', out.width='50%', fig.align='center', echo = FALSE}
+boot_fig
+```
+
+
 # Conclusions and Recommendations
 
-On the basis of this analysis, I advise against favoring one market over the other. Comparative pricing information is available, and it appears that similarly strong investment opportunities can be found in both locales. The median price-per-acre in Fresno is not sufficiently different than the median price-per-acre in Merced to be of significant practical concern (p-value: 0.225).
+On the basis of this analysis, I advise favoring purchases in the Merced market over the Fresno market. Comparative pricing information is available, and it appears that similarly strong investment opportunities can be found in both locales, but there is evidence to suggest that the median price-per-acre in Fresno is sufficiently different than the median price-per-acre in Merced to be of practical concern. Though the rank-based Mann-Whitney test does not detect significance (p-value: 0.225), it is a boundary line case. The weight of evidence brought by the permutation and bootstrap tests, both of which consider the real values of the observed data, not just their relative ranking, both disclose a significant difference in the median price-per-acre (p-values of 0.092 and 0.080 respectively).
 
 In stating this conclusion, it must be recognized that binary hypothesis testing may not adequately capture all aspects of real and perceived risk. Additional study on this question could be done using Bayesian methods that allow the incorporation of expert opinions and an expanded vocabulary of risk. To further confirm the findings of the study done in this report, I advise a simulation study to confirm that the power of the Mann-Whitney test is sufficient for the designated level of practical importance outlined in Appendix 2.
 
-In how this study was conducted, the benefit of using a nonparametric test cannot be overstated. As discussed in the Data section, there were clear reasons to be entirely skeptical of the results that could be gained through a classical t-test. The dramatic difference in the p-values that the parametric and nonparametric methods gave, as discussed in the Results section, is an indicator of the kinds of disparities that can result in the misapplication of statistical methods. Nonparametric tests, like the Mann-Whitney test, are a responsible option for fitting to a wider variety of data and should be adopted in more applications.
+In how this study was conducted, the benefit of using a nonparametric test cannot be overstated. As discussed in the Data section, there were clear reasons to be entirely skeptical of the results that could be gained through a classical t-test. The dramatic difference in the p-values that the parametric and nonparametric methods gave, as discussed in the Results section, is an indicator of the kinds of disparities that can result in the misapplication of statistical methods. Nonparametric tests, like the Mann-Whitney test, are a responsible option for fitting to a wider variety of data and should be adopted in more applications. The stark difference between the findings of the classical t-test and the two resampling procedures is also a strong indicator of the importance of applying appropriate methods to get specific and actionable insights.
 
 \newpage 
 
@@ -122,7 +140,7 @@ All figures are made with the ggplot2, first introduced in @wickham2011ggplot2.
 <!-- Why Type II error matters here -->
 In the context of agriculture investing, the risk associated with incorrectly concluding that there is a preferred price location when no material difference in per-acre price exists (type I error) is entirely realized in an unnecessary limiting of perspective properties. There is not a measurable financial cost to making this mistake. The consequence of incorrectly concluding that there is no difference in per-acre price (type II error) is much more substantial. If this mistake is made there could be substantial, unnecessary overpayment without a commensurate increase in returns. In clasical hypothesis testing, the level of significance, $\alpha$, represents the probability of making a type I error. To appropriately offset risk, we adjusted $\alpha$ to control the type II error probability of making a "practically significant" over payment of at least 20-25% of per-acre price at roughly 0.05. In making this adjustment we align practical significance with statistical significance.
 
-Figure 2 shows the probability of type II error at this practically significant threshold as a function of the level of significance, $\alpha$, for a two-sample t-test with equal variance. As mentioned earlier, using this parameteric statistical procedure is not appropriate for this data. However, @Randles, indicate that in simulation studies performed by the authors, when the non-parametric equivalent of the two-sample t-test is applied to strictly positive and right skewed data the power of the test exceeds $1-\alpha$. By extrapolating their results to our sample sizes, it is safe to conclude that the type II error probability for the nonparametric test is bounded above by the two-sample t-test's type II error probability. In future work, a simulation study could be conducted to empirically confirm this behavior if more certainty in the method is desired.
+Figure 4 shows the probability of type II error at this practically significant threshold as a function of the level of significance, $\alpha$, for a two-sample t-test with equal variance. As mentioned earlier, using this parameteric statistical procedure is not appropriate for this data. However, @Randles, indicate that in simulation studies performed by the authors, when the non-parametric equivalent of the two-sample t-test is applied to strictly positive and right skewed data the power of the test exceeds $1-\alpha$. By extrapolating their results to our sample sizes, it is safe to conclude that the type II error probability for the nonparametric test is bounded above by the two-sample t-test's type II error probability. In future work, a simulation study could be conducted to empirically confirm this behavior if more certainty in the method is desired.
 
 ```{r, parametric_power_prep, echo = FALSE}
 d <- 0.5 # corresponds to overpaying 20-25% (on average)
