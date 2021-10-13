@@ -131,7 +131,7 @@ Include reference books and R packages
 
 Data for this analysis is available at this [link]( https://github.com/a-j-cummings/STAT435/blob/8b95408a9087ed78b86eee7f8f602ae394bcbe14/Exam1/farms.csv). The data was obtained via personal communication with an industry analyst and the source is not publicly disclosable. Sale prices are given in increments of $10k.
 
-The code for this analysis can be found [here](https://github.com/a-j-cummings/STAT435/blob/0679e7ebd4a932317594e19672776701c7404d8f/Exam1/JaredCummingsAnalysis.R).
+The code for this analysis can be found [here](https://github.com/a-j-cummings/STAT435/blob/0679e7ebd4a932317594e19672776701c7404d8f/Exam1/JaredCummingsAnalysis.R) and is supplemented by code for the resampling tests, which can be found [here](https://github.com/a-j-cummings/STAT435/blob/5430cd29c6ffa3405216394c8e75aff33280f58b/Exam1/resampling_tests.R).
 
 All figures are made with the ggplot2, first introduced in @wickham2011ggplot2.
 
