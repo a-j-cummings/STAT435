@@ -1,0 +1,80 @@
+---
+title: "Pithy Title"
+author: "Jared Cummings"
+date: "November 2021"
+abstract: Abstract will go here.
+output: 
+  pdf_document: 
+    toc: true
+    fig_width: 7
+    fig_height: 6
+    fig_caption: true
+    #template: template.tex
+    #number_sections: true
+    #citation_package: pandoc-citeproc
+
+bibliography: exam2.bib
+biblio-style: "apalike"
+link-citations: true
+urlcolor: blue
+---
+```{r, setup, include=FALSE}
+library(tidyverse)
+library(cowplot)
+
+fiji_raw <- read_table('fiji_contraceptives.dat')
+
+fiji_short <- fiji_raw %>% 
+  janitor::clean_names() %>% 
+  select(-x6)
+
+fiji_long <- fiji_short %>%
+  pivot_longer(c(using, not_using), names_to = 'use')
+
+fiji_binary <- fiji_long %>% 
+  mutate(obs = map(value, ~rep_len(1, .x))) %>% 
+  unnest(obs) %>% 
+  select(-value, -obs) %>% 
+  mutate(use = case_when(use == 'using' ~ 1,
+                         TRUE ~ 0))
+```
+
+\newpage
+
+# Introduction
+<!-- Problem and its background -->
+In the middle of the 20th century there was a global concern about overpopulation. With the benefit of hindsight, the doomsday prophecies about impending mass famine that would blight humanity nearly to extinction were overblown. Neverless, these concerns sparked a non-negligable degree of scientific inquiry into fertility and family planning, especially in the developing world where population growth rates have been highest. Of the antinatalist proponents, there were two camps that conceived of different solutions. The first posited that the birth rate would decline with expanded access to contraceptives and was bolstered by surveys suggesting that there was an unmet demand for birth control in the developing world. The second asserted that socioeconomic development was the ultimate solution. Those in this second camp explained that as a woman's working hours became more lucrative, the extra hands provided by a large family would be increasingly less necessary to make ends meet. Both positions were based off of tenuous research, and the World Fertility Survey was launched to increase the scientific standards of the debate. The broader impact of the survey is discussed in @cleland1989. 
+
+
+<!-- methods used to solve this problem -->
+
+<!-- ultimate goals of this report -->
+
+<!-- significance level -->
+From the survey results, the claim that policy aimed to meet the demand for birth control was the optimal solution would be bolstered by findings suggesting that the women in developing countries generally don't use birth control even when they do not want more children. Alternatively, the claim that socioeconomic development was the underlying driver would be supported by findings suggesting a link between interest in having children and measures of economic advancement, such as education. Using survey results of 1,607 married and fecund Fijian women, this report aims to evaluate the merits of the two claims using the  Generalized Linear Model (GLM) framework. Conclusions will be evaluated at the default scientific standard, the 0.05 level of significance. Although in the decades since this data was gathered policy debates have turned away from promoting restrictive family planning to promoting higher fertility, this study still provides an interesting window into the applicability of data in decision making.
+
+# Data
+<!-- describe the data set -->
+
+<!-- EDA -->
+
+# Methodology
+<!-- what methods and why -->
+
+<!-- validate assumptions -->
+
+# Results
+<!-- why the model? Model selection process -->
+
+<!-- assessment of model fit -->
+
+<!-- insights from model -->
+
+# Conclusion
+<!-- Is the goal acheived? -->
+
+<!-- any follow up questions? --?
+
+<!-- future work -->
+
+
