@@ -148,16 +148,42 @@ anova(mod_all2b)
 mod_2wayb <- glm(use ~ -1 + (age + wants_more + education)^2,
                  family = binomial(link = 'logit'), data = fiji_binary)
 anova(mod_2wayb)
-# I will use mod_2wayb
+
+############
+# Binomial #
+############
+
+# A model with all three way interactions -- cell means
+mod_allc <- glm(cbind(using, not_using) ~ -1 + (age + education + wants_more)^3,
+                family = binomial(link = "logit"), data = fiji_short)
+anova(mod_allc)
+"
+- age is the most important variable, so keep it at the top
+- of the single variables, education should be moved below wants_more
+- 3 way interaction can go
+"
+mod_2wayc <- glm(cbind(using, not_using) ~ -1 + (age + wants_more + education)^2,
+                family = binomial(link = "logit"), data = fiji_short)
+anova(mod_2wayc)
+"
+- Interactions with education are not improving the model, drop them
+"
+mod_2wayc2 <- glm(cbind(using, not_using) ~ -1 + (age + wants_more)^2 + education,
+                 family = binomial(link = "logit"), data = fiji_short)
+anova(mod_2wayc2)
+"
+Looks good. Use this model.
+"
+
 
 # summarizing the model
-fiji_binary2 <- fiji_binary %>% 
-  mutate(pred = predict(mod_2wayb, type = 'response'))
-actual <- xtabs(use ~ age + wants_more + education, data = fiji_binary2)
+fiji_short2 <- fiji_short %>% 
+  mutate(pred = predict(mod_2wayc2, type = 'response')*(using+not_using),
+         obs = using)
+fiji_short2
+actual <- xtabs(obs ~ age + wants_more + education, data = fiji_short2)
 expected <- xtabs(pred ~ age + wants_more + education, data = fiji_binary2)
 
-aov_out <- anova(mod_2wayb)
-df <- aov_out$`Resid. Df`[1] - aov_out$`Resid. Df`[7]
 # Pearson ChiSq
 pearson <- sum((actual - expected)**2/expected)
 pearson

@@ -21,6 +21,7 @@ urlcolor: blue
 ```{r, setup, include=FALSE}
 library(tidyverse)
 library(cowplot)
+library(latex2exp)
 
 fiji_raw <- read_table('fiji_contraceptives.dat')
 
@@ -43,38 +44,162 @@ fiji_binary <- fiji_long %>%
 
 # Introduction
 <!-- Problem and its background -->
-In the middle of the 20th century there was a global concern about overpopulation. With the benefit of hindsight, the doomsday prophecies about impending mass famine that would blight humanity nearly to extinction were overblown. Neverless, these concerns sparked a non-negligable degree of scientific inquiry into fertility and family planning, especially in the developing world where population growth rates have been highest. Of the antinatalist proponents, there were two camps that conceived of different solutions. The first posited that the birth rate would decline with expanded access to contraceptives and was bolstered by surveys suggesting that there was an unmet demand for birth control in the developing world. The second asserted that socioeconomic development was the ultimate solution. Those in this second camp explained that as a woman's working hours became more lucrative, the extra hands provided by a large family would be increasingly less necessary to make ends meet. Both positions were based off of tenuous research, and the World Fertility Survey was launched to increase the scientific standards of the debate. The broader impact of the survey is discussed in @cleland1989. 
+In the middle of the 20th century there was a global concern about overpopulation. With the benefit of hindsight, the doomsday prophecies about impending mass famine that would blight humanity nearly to extinction were overblown. Neverless, these concerns sparked a non-negligable degree of scientific inquiry into fertility and family planning, especially in the developing world where population growth rates have been highest. Of the antinatalist proponents, there were two camps that conceived of different solutions. The first posited that the birth rate would decline with expanded access to contraceptives and was bolstered by surveys suggesting that there was an unmet demand for birth control in the developing world. The second asserted that socioeconomic development was the ultimate solution. Those in this second camp explained that as a woman's working hours became more lucrative, the extra hands provided by a large family would be increasingly less necessary to make ends meet. Both positions were based off of tenuous research, and the World Fertility Survey (WFS) was launched to increase the scientific standards of the debate. The broader impact of the survey is discussed in @cleland1989. 
 
 
 <!-- methods used to solve this problem -->
-
 <!-- ultimate goals of this report -->
-
 <!-- significance level -->
 From the survey results, the claim that policy aimed to meet the demand for birth control was the optimal solution would be bolstered by findings suggesting that the women in developing countries generally don't use birth control even when they do not want more children. Alternatively, the claim that socioeconomic development was the underlying driver would be supported by findings suggesting a link between interest in having children and measures of economic advancement, such as education. Using survey results of 1,607 married and fecund Fijian women, this report aims to evaluate the merits of the two claims using the  Generalized Linear Model (GLM) framework. Conclusions will be evaluated at the default scientific standard, the 0.05 level of significance. Although in the decades since this data was gathered policy debates have turned away from promoting restrictive family planning to promoting higher fertility, this study still provides an interesting window into the applicability of data in decision making.
 
 # Data
 <!-- describe the data set -->
-
+@little1979 reported some of the summarized responses of the Fijian stage of the WFS, the Fiji Fertility Survey, run in 1974. Because there are nontrivial behavioral disparities between ethnic groups in Fiji, these responses are specific to Indian women living in the country. As such, conclusions drawn from the data should be understood in this specific context. Of interest to this analysis is the part of the survey where the women reported ever having used any efficient contraceptive method. These results are summarized by current age of the woman, her desire for more children, and her level of education. The data, *which is linked in the appendix*, is summarized in Figure 1.
 <!-- EDA -->
+```{r, eda, echo = FALSE, fig.cap = 'Marginal and joint visualizations of partial results of the Fiji Fertility Survey. (Top left) Proportion who have used an efficient contraceptive increases with age for women in both eduacation levels. The increasing trends noted are expected, older women having had more life in which to use an efficient contraceptive method. Sample size disparities are evident, which reflects the development of the Fijian educational system, which was not fully structured in the 1930s during the childhoods of the oldest women in the survey. (Top right) Proportion who have used an efficient contraceptives strongly increases with age among women who do not want more children. While an increase is aparent among women who do want more children, it noticably less and possibly explained by an age effect. Small sample sizes can again be seen. (Bottom) Propotion who have used an efficient contraceptive appears to increase with age in all joint categorizations of education and desire for children. There is a vissible change in behavior in the oldest age bucket.', out.width='75%', fig.align='center'}
+# marginal of education | age
+education_plot <- fiji_short %>% 
+  group_by(education, age) %>% 
+  summarise(using = sum(using), 
+         not_using = sum(not_using),
+         n_responses = using + not_using,
+         prop_using = using/n_responses, .groups = 'drop') %>% 
+  ggplot(aes(age, prop_using, color = education)) +
+    geom_point(aes(size = n_responses)) + 
+    geom_line(aes(as.numeric(factor(age)))) + 
+    labs(x = 'Age', y = 'Proportion using contraceptives',
+         size = '# of respondents', color = 'Education')
+# marginal of wants_more | age
+wants_more_plot <- fiji_short %>% 
+  group_by(wants_more, age) %>% 
+  summarise(using = sum(using), 
+            not_using = sum(not_using),
+            n_responses = using + not_using,
+            prop_using = using/n_responses, .groups = 'drop') %>% 
+  ggplot(aes(age, prop_using, color = wants_more)) +
+  geom_point(aes(size = n_responses)) + 
+  geom_line(aes(as.numeric(factor(age)))) +
+  labs(x = 'Age', y = 'Proportion using contraceptives',
+       size = '# of respondents', color = 'Desires more children')
+# both
+both <- fiji_short %>% 
+  mutate(n_responses = not_using + using,
+         prop_using = using/n_responses) %>% 
+  ggplot() + 
+    geom_point(aes(age, prop_using,
+                   color = interaction(education, wants_more),
+                   size = n_responses))  +
+    geom_line(aes(as.numeric(factor(age)), prop_using,
+                  color = interaction(education, wants_more))) + 
+    labs(x = 'Age', y = 'Proportion using contraceptives',
+         size = '# of respondents', color = 'Interaction(Education, Desire for children)')
+plot_grid(plot_grid(education_plot, wants_more_plot), both, nrow = 2)
+```
 
 # Methodology
 <!-- what methods and why -->
+When not summarized into factor-level proportions, this data is reported as binary indicators for each individual for variables representing education, contraceptive use, and desire for more children. The age is summarized into four distinct categories. The data in its totality is then summarized into a 2x2x2x4 table of counts. Using the contraceptive use status of the respondents as the dependent variable, the contingency table can best be understood as a 2x2x4 table of binomial random variables. A regression analysis on this data should respect this structure. Using the GLM framework, the binomial success probability can appropriately be modeled using a link function, $g(p_{ijk})$. Formally, the model can be defined
+\begin{eqnarray}
+\texttt{contraceptives\_used}_{ijk} &\overset{\textit{ind.}}{\sim}& \mathcal{B} (\texttt{contraceptives\_used}_{ijk} + \texttt{contraceptives\_not\_used}_{ijk},\; p_{ijk}) \\
+g(p_{ijk}) &=& X\beta \notag
+\end{eqnarray}
+where $\mathcal{B}$ denotes the binomial distribution and $X\beta$ is a linear regression function of $\texttt{education}_i$, $\texttt{desire}_j$, and $\texttt{age}_k$ to be defined later.
 
-<!-- validate assumptions -->
+<!-- Assumptions -->
+This logistic regression model defined in (1) makes fairly minimal assumptions about the data. Firstly, the data is assumed to follow the stated binomial distribution. Secondly, the observed counts are assumed to be independent. Thirdly, monotonicity is assumed between the binomial probabilities and the regression equation. Some would include a fourth assumption here, that the cell counts in the contingency table being modeled are sufficiently large, though this is assumption only concerns itself with assessing statistical significance and not the propriety of fitting the model.
+
 
 # Results
 <!-- why the model? Model selection process -->
+Through the process of manual backward selection, beginning at a saturated model and walking backward, the linear regression component of the binomial GLM chosen to model this data relationship was
+\begin{eqnarray}
+\log\frac{p_{ijk}}{1-p_{ijk}} &=& \beta_{1,1}\cdot\mathbf{1}(\texttt{age}_k = '< 25') + \beta_{1,2}\cdot\mathbf{1}(\texttt{age}_k = '25-29') + \beta_{1,3}\cdot\mathbf{1}(\texttt{age}_k = '30-39') + \\
+&& \beta_{1,4}\cdot\mathbf{1}(\texttt{age}_k = '40-49') + \beta_{2}\cdot\mathbf{1}(\texttt{desire}_j = \text{yes}) + \beta_{3}\cdot\mathbf{1}(\texttt{education}_i = \text{low}) + \notag \\ 
+&& \alpha_{1} \cdot\mathbf{1}(\texttt{age}_k = '25-29' \land \texttt{desire}_j = \text{yes})  + \alpha_{2} \cdot\mathbf{1}(\texttt{age}_k = '30-39' \land \texttt{desire}_j = \text{yes}) + \notag \\ 
+&& \alpha_{3} \cdot\mathbf{1}(\texttt{age}_k = '40-49' \land \texttt{desire}_j = \text{yes})\notag
+\end{eqnarray}
+where $\beta$ coefficients are first-order effects of the variables and the $\alpha$ coefficients are first order interactions. The logistic function was chosen over a Probit link for its odds ratio interpretation. The data as seen in Figure 1 did not suggest evidence of skewness that might be better modeled with the log-log or complementary log-log links. Table 1 reports the estimated coefficients, their standard errors, and the associated z scores and p-values for the model defined in (2). Significance is determined at the 0.05 level. $\texttt{R}$ code needed to reproduce the model is linked in the appendix.
 
+```{r, echo = FALSE}
+mod_2wayc2 <- glm(cbind(using, not_using) ~ 
+                  -1 + (age + wants_more)^2 + education,
+                  family = binomial(link = "logit"), data = fiji_short)
+
+summary(mod_2wayc2)$coefficients %>% 
+  as_tibble() %>% 
+  add_column(` ` = c('beta 1,1',
+                'beta 1,2',
+                'beta 1,3',
+                'beta 1,4',
+                'beta 2',
+                'beta 3',
+                'alpha 1',
+                'alpha 2',
+                'alpha 3'),
+            Coeficient = c('Age < 25',
+                           'Age 25-29',
+                           'Age 30-39',
+                           'Age 40-49',
+                           'Wants more kids',
+                           'Low education',
+                           'Age 25-29 : Wants more kids',
+                           'Age 30-39 : Wants more kids',
+                           'Age 40-49 : Wants more kids'),
+            .before = 'Estimate') %>% 
+  add_column(Sig. = c('Y', 'Y', 'Y', 'Y', 'N', 'Y', 'N', 'Y', 'Y'),
+             .after = 'Pr(>|z|)') %>% 
+  rename('z score' = 'z value') %>% 
+  knitr::kable(digits = 3, align = 'lcllll', caption = "Parameter estimates, standard errors, z scores and p-values from the model defined in (2). Significance ('Sig.') is determined at a 0.05 cutoff. The increasing contraceptive usage with increasing age noted in Figure 1 is seen in the estimates of the beta 1,* coefficients. A desire for more children and lower education are both associated with lower contraceptive usage, though the effect of desire for more children is most strongly felt in conjuction with the higher two age buckets.")
+```
+
+```{r, echo = FALSE}
+# summarizing the model
+fiji_short2 <- fiji_short %>% 
+  mutate(pred = predict(mod_2wayc2, type = 'response')*(using+not_using),
+         obs = using)
+actual <- xtabs(obs ~ age + wants_more + education, data = fiji_short2)
+expected <- xtabs(pred ~ age + wants_more + education, data = fiji_short2)
+
+df <- 7
+# Pearson ChiSq
+pearson <- sum((actual - expected)**2/expected)
+p_pearson <- 1 - pchisq(pearson, df)
+# Neyman ChiSq
+neyman <- sum((actual - expected)**2/actual)
+p_neyman <- 1 - pchisq(neyman, df)
+```
+
+## Model fit
 <!-- assessment of model fit -->
+The model is a strong fit to the data. The Pearson $\chi^2$ statistic was found to be `r round(pearson, 2)` and the Neyman $\chi^2$ statistic was found to be `r round(neyman, 2)`, both with 7 degrees of freedom. Both statistics support the conclusion that the model in (2) is not significantly different than the saturated model with p-values `r round(p_pearson, 3)` and `r round(p_neyman, 3)` respectively. Since both statistics support the same conclusion and are relatively similar in value, the cell counts in the contingency table being modeled are sufficiently large for statistical significance of the model and parameter estimates to be considered valid.
 
+The assumptions of the model all appear to hold. The data being modeled is indeed binomial counts. The survey design and execution does not prompt doubt about the independence assumption. The model in (2) does not contain any estimates of slope, only intercepts for various combinations of the factors in question, so the mononicity assumption is also met by default.
+
+## Discussion
 <!-- insights from model -->
+Recall from the introduction that there were two camps interested in using the results of this survey to suggest policy for the governments of developing countries. The goal of both ideologies was to reduce family sizes and was motivated by a now defunct fear of overpopulation. One group claimed that policy aimed to meet the demand for birth control was the optimal solution. This group's stance would be bolstered by findings suggesting that the women in developing countries generally don’t use birth control more readily even when they do not want more children. The second group claimed that socioeconomic development was the underlying driver of lower fertility rates. This perspective would be supported by findings suggesting a link between interest in having children and measures of economic advancement, such as education.
+
+The first group will not be totally disappointed. Younger women do not have a statistically lower history of contraceptive use when partitioned by desire for more children, controlling for education level. A woman younger than 25 who wants more children is just as likely to have a history of contraceptive use as a woman younger than 25 with the same level of education who does not want more children (p-value = 0.841). The same is true of women in the 25-29 age group (p-value = 0.527). However, this behavior does reverse itself among women in the 30-39 and 40-49 age groups. Women in the 30-39 age group who do not want more children are three times more likely to have a history of contraceptive use than an equally educated comparison (p-value = 0.003). The multiplier for women in the 40-49 age group is an even greater value of 3.9 (p-value = 0.005). This together suggests that younger women have children at the same rate regardless of preference, and that the increased access to contraceptives that corresponds to older age likely drives down the fertility rate. Policy recommending increased access to contraceptives earlier in life could be pitched as a way to decrease the number of children being born to each woman.
+
+This is not the only way to interpret these findings. Could it be that younger women who do not want more children are not as financially established as older women who do not want more children? Could the relatively lower socioeconomic status be the causal component of the different contraceptive usage behaviors? The data does not allow for insight into this question, and the second group could contest the first groups interpretation of the results on this basis. Something that the second group can assert that the first group cannot reject is that education, which proxies to some degree as a measure of socioeconomic comfort, is a significant differentiator of contraceptive use among the survey respondents. Controlling for age and desire for children, a woman with more education is 40.6% more likely to have a history of contraceptive use (p-value = 0.007). The decline in birth rates that has been witnessed over the decades since the WFS was conducted in countries that have a larger educated professional class of women has an analog that was measurable 1974 in Fiji. The second group has history and statistics on their side.
 
 # Conclusion
 <!-- Is the goal acheived? -->
-
-<!-- any follow up questions? --?
-
 <!-- future work -->
+<!-- any follow up questions? -->
+The aim of this analysis was to determine the weight of evidence, if any, that the WFS provided to the arguments of the two camps of policy promoters previously described. This has been achieved. The insights in support of the "increase access" policy recommendations have been shown to be arguable, but tenuous in the absence of follow-up work. Additional research should be conducted into the potential socioeconomic shift that occurs as the women age. The model fitted on the survey responses demonstrably supports the "strengthen socioeconomic status" argument. 
+
+As with all research, insights do need to be interpreted in context. The data available, and hence the applicability of the fitted model and ensuing discussion, is strictly restricted to ethnically Indian women living in Fiji who are physically capable of childbearing. To generalize the findings, additional segments of the WFS can be analyzed and summarized. Until doing so, it is not advisable to use the findings contained in this analysis to promote specific action over broader demographics.
+
+\newpage
+
+# Bibliography
+
+::: {#refs}
+:::
+
+\newpage
+
+# Appendix
 
 
