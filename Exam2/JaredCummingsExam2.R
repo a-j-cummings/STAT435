@@ -1,16 +1,15 @@
 # Performs analysis on Fiji contraceptive use data
 
-# load packages
+# load packages -- janitor package also required, but called explicitly
 library(tidyverse)
 library(cowplot)
 library(latex2exp)
 
 # data manipulation
-fiji_raw <- read_table('fiji_contraceptives.dat')
+fiji_raw <- read_csv('fiji_contraceptives.csv')
 
 fiji_short <- fiji_raw %>% 
-  janitor::clean_names() %>% 
-  select(-x6)
+  janitor::clean_names()
 
 
 # EDA
