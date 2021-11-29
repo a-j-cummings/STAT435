@@ -1,8 +1,8 @@
 ---
-title: "Pithy Title"
+title: "Family Planning in Fiji"
 author: "Jared Cummings"
 date: "November 2021"
-abstract: Abstract will go here.
+abstract: In response to global concern about overpopulation that was endemic in the middle of the 20th century, the World Fertility Survey (WFS) was conducted to help inform policy decisions. Using a subset of this survey conducted in Fiji whose respondents were exclusively ethnically Indian and physically capable of childbearing, this report analyzes the effects of education, age, and desire for children on an individuals history of effective contraceptive use. The weight of evidence in support of two different policy platforms aimed at reducing fertility rates is discussed. There is significant reason to believe that increasing the socioeconomic status of women is associated with decreased fertility rates. The effect of increased access to contraceptives is present, but may be confounded by a lurking socioeconomic variable. Further research is called for before definitive conclusions on contraceptive access within this subpopulation can be reached and before policy recommendations can be made more broadly. 
 output: 
   pdf_document: 
     toc: true
@@ -23,28 +23,17 @@ library(tidyverse)
 library(cowplot)
 library(latex2exp)
 
-fiji_raw <- read_table('fiji_contraceptives.dat')
+fiji_raw <- read_csv('fiji_contraceptives.csv')
 
 fiji_short <- fiji_raw %>% 
-  janitor::clean_names() %>% 
-  select(-x6)
-
-fiji_long <- fiji_short %>%
-  pivot_longer(c(using, not_using), names_to = 'use')
-
-fiji_binary <- fiji_long %>% 
-  mutate(obs = map(value, ~rep_len(1, .x))) %>% 
-  unnest(obs) %>% 
-  select(-value, -obs) %>% 
-  mutate(use = case_when(use == 'using' ~ 1,
-                         TRUE ~ 0))
+  janitor::clean_names()
 ```
 
 \newpage
 
 # Introduction
 <!-- Problem and its background -->
-In the middle of the 20th century there was a global concern about overpopulation. With the benefit of hindsight, the doomsday prophecies about impending mass famine that would blight humanity nearly to extinction were overblown. Neverless, these concerns sparked a non-negligable degree of scientific inquiry into fertility and family planning, especially in the developing world where population growth rates have been highest. Of the antinatalist proponents, there were two camps that conceived of different solutions. The first posited that the birth rate would decline with expanded access to contraceptives and was bolstered by surveys suggesting that there was an unmet demand for birth control in the developing world. The second asserted that socioeconomic development was the ultimate solution. Those in this second camp explained that as a woman's working hours became more lucrative, the extra hands provided by a large family would be increasingly less necessary to make ends meet. Both positions were based off of tenuous research, and the World Fertility Survey (WFS) was launched to increase the scientific standards of the debate. The broader impact of the survey is discussed in @cleland1989. 
+In the middle of the 20th century there was a global concern about overpopulation. With the benefit of hindsight, the doomsday prophecies about impending mass famine that would blight humanity nearly to extinction were overblown. Nevertheless, these concerns sparked a non-negligable degree of scientific inquiry into fertility and family planning, especially in the developing world where population growth rates have been highest. Of the antinatalist proponents, there were two camps that conceived of different solutions. The first posited that the birth rate would decline with expanded access to contraceptives and was bolstered by surveys suggesting that there was an unmet demand for birth control in the developing world. The second asserted that socioeconomic development was the ultimate solution. Those in this second camp explained that as a woman's working hours became more lucrative, the extra hands provided by a large family would be increasingly less necessary to make ends meet. Both positions were based off of tenuous research, and the World Fertility Survey (WFS) was launched to increase the scientific standards of the debate. The broader impact of the survey is discussed in @cleland1989. 
 
 
 <!-- methods used to solve this problem -->
@@ -118,7 +107,7 @@ Through the process of manual backward selection, beginning at a saturated model
 && \alpha_{1} \cdot\mathbf{1}(\texttt{age}_k = '25-29' \land \texttt{desire}_j = \text{yes})  + \alpha_{2} \cdot\mathbf{1}(\texttt{age}_k = '30-39' \land \texttt{desire}_j = \text{yes}) + \notag \\ 
 && \alpha_{3} \cdot\mathbf{1}(\texttt{age}_k = '40-49' \land \texttt{desire}_j = \text{yes})\notag
 \end{eqnarray}
-where $\beta$ coefficients are first-order effects of the variables and the $\alpha$ coefficients are first order interactions. The logistic function was chosen over a Probit link for its odds ratio interpretation. The data as seen in Figure 1 did not suggest evidence of skewness that might be better modeled with the log-log or complementary log-log links. Table 1 reports the estimated coefficients, their standard errors, and the associated z scores and p-values for the model defined in (2). Significance is determined at the 0.05 level. $\texttt{R}$ code needed to reproduce the model is linked in the appendix.
+where $\beta$ coefficients are first-order effects of the variables and the $\alpha$ coefficients are first order interactions. The logistic function was chosen over a Probit link for its odds ratio interpretation. The data as seen in Figure 1 did not suggest evidence of skewness that might be better modeled with the log-log or complementary log-log links. Table 1 reports the estimated coefficients, their standard errors, and the associated z scores and p-values for the model defined in (2). Significance is determined at the 0.05 level. $\texttt{R}$ code needed to reproduce the model and associated analysis is linked in the appendix.
 
 ```{r, echo = FALSE}
 mod_2wayc2 <- glm(cbind(using, not_using) ~ 
@@ -201,5 +190,5 @@ As with all research, insights do need to be interpreted in context. The data av
 \newpage
 
 # Appendix
-
+The data from the WFS used in this analysis can be found [here](https://github.com/a-j-cummings/STAT435/blob/5e0e88142d98bbbd633f964f4806976d36b6b098/Exam2/fiji_contraceptives.csv). $\texttt{R}$ code to perform the analysis described and to reproduce figures are tables is also available at [this link](https://github.com/a-j-cummings/STAT435/blob/5e0e88142d98bbbd633f964f4806976d36b6b098/Exam2/JaredCummingsExam2.R).
 
