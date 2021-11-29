@@ -190,5 +190,5 @@ As with all research, insights do need to be interpreted in context. The data av
 \newpage
 
 # Appendix
-The data from the WFS used in this analysis can be found [here](https://github.com/a-j-cummings/STAT435/blob/5e0e88142d98bbbd633f964f4806976d36b6b098/Exam2/fiji_contraceptives.csv). $\texttt{R}$ code to perform the analysis described and to reproduce figures are tables is also available at [this link](https://github.com/a-j-cummings/STAT435/blob/5e0e88142d98bbbd633f964f4806976d36b6b098/Exam2/JaredCummingsExam2.R).
+The data from the WFS used in this analysis can be found [here](https://github.com/a-j-cummings/STAT435/blob/5e0e88142d98bbbd633f964f4806976d36b6b098/Exam2/fiji_contraceptives.csv). $\texttt{R}$ code to perform the analysis described and to reproduce figures are tables is also available at [this link](https://github.com/a-j-cummings/STAT435/blob/9eb9e3a3eb520ed49a58ffc8effef2ee5af362bf/Exam2/JaredCummingsExam2.R).
 
