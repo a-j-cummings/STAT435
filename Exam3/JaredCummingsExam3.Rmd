@@ -1,0 +1,212 @@
+---
+title: "Loglinear Analysis of Family Planning in Fiji"
+author: "Jared Cummings"
+date: "December 2021"
+abstract: Abstract will go here.
+output: 
+  pdf_document: 
+    toc: true
+    fig_width: 7
+    fig_height: 6
+    fig_caption: true
+    #template: template.tex
+    #number_sections: true
+    #citation_package: pandoc-citeproc
+
+bibliography: exam2.bib
+biblio-style: "apalike"
+link-citations: true
+urlcolor: blue
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(MASS)
+
+select <- dplyr::select
+
+fiji_raw <- read_csv('fiji_contraceptives.csv')
+
+fiji_short <- fiji_raw %>%
+  janitor::clean_names()
+
+fiji_long <- fiji_short %>%
+  pivot_longer(-c(age, education, wants_more), names_to = 'usage', 
+               values_to = 'count')
+```
+\newpage
+# Introduction
+
+Analyses of the cell counts of contingency tables are a prominent application of generalized linear models (GLMs). Such analyses are done with a log link function and a Poisson response, modeling the expected count as a function of the categorical variables that uniquely identify that cell. In this report a loglinear model is fit on the responses from part of the Fijian stage of the World Fertility Survey (WFS), the Fiji Fertility Survey, that was run in 1974 and reported by @little1979. By modeling the cell counts, inference on cell probabilities of the unknown population's contingency table is made accessible. It is this population demographics that are the quantity of interest in this analysis. Statistical significance will be assessed at the 0.05 level.
+
+Understanding contraceptive use in a population is important for projecting the fertility rate of a group. This has obvious applications for city and national planning, projecting taxable funds, draft response rates, and other critical civic measures. This information can also inform policy decisions. It may be ill-advised to invest heavily in expanding childhood education in an area that is seeing a drop in the birthrate. 
+
+# Data
+<!-- describe the data set -->
+@little1979 reported some of the summarized responses of the Fijian stage of the WFS, the Fiji Fertility Survey, run in 1974. Because there are nontrivial behavioral disparities between ethnic groups in Fiji, these responses are specific to Indian women living in the country. As such, conclusions drawn from the data should be understood in this specific context. Of interest to this analysis is the part of the survey where the women reported ever having used any efficient contraceptive method. The data as reported by Little and Pullum is given in Table 1.
+
+```{r}
+fiji_short %>%
+  rename(Age = age, Education = education, 
+         'Desires more children' = wants_more, 
+         'Never used contraceptives' = not_using,
+         'Used contraceptives' = using) %>%
+  knitr::kable(caption = 'Data as reported by Little and Pullum. Age is a factor with four levels, education, desire for children (wants_more) and contraceptive usage (reported here in the not_using and using columns) all have two levels. The contingency table that the loglinear model will fit on will then be a 4x2x2x2 table.')
+```
+
+The full contingency table is depicted graphically in Figure 1. All of the variables visibly have an effect on count, so it is expected that a well-fitting model will have to incorporate some interaction terms. This figure also tells the story of public education access in Fiji. The women in the oldest age bucket came of age right before secondary education began to be formally organized. The women in the next age bucket down, the 30-39 group, came of age as secondary education was becoming widespread. Those in the youngest two buckets grew up with easy access to secondary school. It can be observed that the youngest two age buckets are dominated by highly educated women, the third by a transition period, and the last has a majority with low education.
+
+A second phenomenon seen in Figure 1 is that women who are older seem more prone to having used efficient contraceptives at some point in their comparatively longer lives than younger women. Lines associated with not having used efficient contraceptives start at the top on the left-hand side of the plot and end at the bottom of the right-hand side. The same is true of wanting more children. Older women seem less prone than their younger counterparts to be interested in expanding their family size.
+
+
+```{r, eda, echo = FALSE, fig.cap = 'A graphical depiction of the 4x2x2x2 contingency table. On display are the effects of each variable on cell count. There are visible interactions at play between the factors. A well-fitting model will have to incorpoate terms that capture these interactions.', out.width='75%', fig.align='center'}
+fiji_long %>%
+  mutate(usage = case_when(usage == 'not_using' ~ 'no',
+                           TRUE ~ 'yes')) %>%
+ggplot(aes(as.numeric(factor(age)), count, color = education,
+                      shape = usage, linetype = wants_more)) + 
+  geom_point() +
+  geom_line() +
+  labs(x = 'Age', y = 'Count', color = 'Education',
+       linetype = 'Wants more children', shape = 'Contraceptive usage') + 
+  scale_x_discrete(limits=unique(fiji_long$age))
+```
+
+# Methodology
+
+As described in the introduction, a loglinear model is a special application of Poisson regression. Observed cell counts, $n_{\text{cell}}$, are assumed to be Poisson distributed. The expected cell count, $\mu_{\text{cell}}$ is modeled with the log link function--giving rise to the name "loglinear". Though other link functions exist in Poisson regression, such as the square-root transformation recommended by the Box-Cox proceedure, those are presupposed to provide less-optimal fits by using loglinear methods. Formally, the model can be defined
+\begin{eqnarray}
+  n_{\text{cell}} &\overset{\textit{ind.}}{\sim}& \textit{Pois}(mu_{\text{cell}}) \\
+  \log mu_{\text{cell}} &=& X\beta \notag
+\end{eqnarray}
+where $X\beta$ is a linear regression function of the factors that define the contingency table. For the Fiji WFS data these factors are \texttt{age}, \texttt{education}, \texttt{desire} for more children, and past \texttt{usage} of contraceptives. Since the explanatory variables are all factors in the loglinear model terms beyond the first-order are exclusively interactions.
+
+This Poisson regression model defined in (1) makes fairly minimal assumptions about the data. Firstly, the data is assumed to follow the stated Poisson distribution. Secondly, the observed counts are assumed to be independent. Thirdly, monotonicity is assumed between the log expected counts and the regression equation. Some would include a fourth assumption here, that the cell counts in the contingency table being modeled are sufficiently large, though this is assumption only concerns itself with assessing statistical significance and not the propriety of fitting the model.
+
+# Results
+Through the process of manual backward selection, beginning at a saturated model and walking backward, the linear regression component of the loglinear model chosen to model this data relationship was
+\begin{eqnarray}
+\log\mu_{ijkl} &=& \beta_0 + \beta_{1,1}\cdot\mathbf{1}(\texttt{age}_k = '25-29') + \beta_{1,2}\cdot\mathbf{1}(\texttt{age}_k = '30-39') +  \beta_{1,3}\cdot\mathbf{1}(\texttt{age}_k = '40-49') + \\ 
+&& \beta_{2}\cdot\mathbf{1}(\texttt{usage}_j = \text{using}) + \beta_{3}\cdot\mathbf{1}(\texttt{education}_i = \text{low}) + 
+\beta_{4}\cdot\mathbf{1}(\texttt{desire}_l = \text{yes}) + \notag \\ 
+&& \alpha_{1} \cdot\mathbf{1}(\texttt{age}_k = '25-29' \land \texttt{usage}_j = \text{yes})  + \alpha_{2} \cdot\mathbf{1}(\texttt{age}_k = '30-39' \texttt{usage}_j = \text{yes}) + \notag \\ 
+&& \alpha_{3} \cdot\mathbf{1}(\texttt{age}_k = '40-49' \land \texttt{usage}_j = \text{yes}) + \alpha_{4} \cdot\mathbf{1}(\texttt{age}_k = '25-29' \land \texttt{education}_i = \text{low})  + \notag \\
+&& \alpha_{5} \cdot\mathbf{1}(\texttt{age}_k = '30-39' \land \texttt{education}_i = \text{low}) + \alpha_{6} \cdot\mathbf{1}(\texttt{age}_k = '40-49' \land \texttt{education}_i = \text{low})  + \notag \\
+&& \alpha_{7} \cdot\mathbf{1}(\texttt{age}_k = '25-29' \land \texttt{desire}_l = \text{yes})  + \alpha_{8} \cdot\mathbf{1}(\texttt{age}_k = '30-39' \land \texttt{desire}_l = \text{yes}) + \notag \\ 
+&& \alpha_{9} \cdot\mathbf{1}(\texttt{age}_k = '40-49' \land \texttt{desire}_l = \text{yes}) + \alpha_{10} \cdot\mathbf{1}(\texttt{usage}_j = \text{yes} \land \texttt{education}_i = \text{low}) + \notag \\
+&& \alpha_{11} \cdot\mathbf{1}(\texttt{usage}_j = \text{yes} \land \texttt{desire}_l = \text{yes}) \notag
+\end{eqnarray}
+where $\beta$ coefficients are first-order effects of the variables and the $\alpha$ coefficients are first order interactions. Table 2 reports the estimated coefficients, their standard errors, and the associated z scores and p-values for the model defined in (2). Significance is determined at the 0.05 level. $\texttt{R}$ code needed to reproduce the model and associated analysis is linked in the appendix.
+```{r, model_fitting, echo = FALSE}
+model <- glm(count ~ age + usage + education + wants_more +
+                     age:usage + age:education + age:wants_more + 
+                     usage:education + usage:wants_more,
+             data = fiji_long, family = poisson(link = 'log'))
+
+summary(model)$coefficients %>% 
+  as_tibble() %>% 
+  add_column(` ` = c('beta 0',
+                'beta 1,1',
+                'beta 1,2',
+                'beta 1,3',
+                'beta 2',
+                'beta 3',
+                'beta 4',
+                paste('alpha', 1:11)),
+            Coeficient = c('Intercept',
+                           'Age 25-29',
+                           'Age 30-39',
+                           'Age 40-49',
+                           'Used contraceptives',
+                           'Low education',
+                           'Wants more kids',
+                           'Age 25-29 : Used contraceptives',
+                           'Age 30-39 : Used contraceptives',
+                           'Age 40-49 : Used contraceptives',
+                           'Age 25-29 : Low education',
+                           'Age 30-39 : Low education',
+                           'Age 40-49 : Low education',
+                           'Age 25-29 : Wants more kids',
+                           'Age 30-39 : Wants more kids',
+                           'Age 40-49 : Wants more kids',
+                           'Used contraceptives : Low education',
+                           'Used contraceptives : Wants more kids'),
+            .before = 'Estimate') %>% 
+  add_column(Sig. = c('Y', 'N', rep('Y', 16)),
+             .after = 'Pr(>|z|)') %>% 
+  rename('z score' = 'z value') %>% 
+  knitr::kable(digits = 2, align = 'lcrrrrc', caption = "Parameter estimates, standard errors, z scores and p-values from the model defined in (2). Significance ('Sig.') is determined at a 0.05 cutoff. Of possible two-way interactions, all but an interaction between education and desire for more children were included in the model. The significance of interactions with age is not surprising after the discussion given in the Data section.")
+```
+
+## Model fit
+```{r, echo = FALSE}
+# summarizing the model
+fiji_long2 <- fiji_long %>% 
+  mutate(pred = predict(model, type = 'response'),
+         obs = count)
+actual <- xtabs(obs ~ age + wants_more + education, data = fiji_long2)
+expected <- xtabs(pred ~ age + wants_more + education, data = fiji_long2)
+
+df <- 14
+# Pearson ChiSq
+pearson <- sum((actual - expected)**2/expected)
+p_pearson <- 1 - pchisq(pearson, df)
+# Neyman ChiSq
+neyman <- sum((actual - expected)**2/actual)
+p_neyman <- 1 - pchisq(neyman, df)
+```
+
+The model is a strong fit to the data. The Pearson $\chi^2$ statistic was found to be `r round(pearson, 3)` and the Neyman $\chi^2$ statistic was found to be `r round(neyman, 3)`, both with 14 degrees of freedom. Both statistics support the conclusion that the model in (2) is not significantly different than the saturated model with both p-values practically equal to `r round(p_pearson, 3)`. Since both statistics support the same conclusion and are relatively similar in value, the cell counts in the contingency table being modeled are sufficiently large for statistical significance of the model and parameter estimates to be considered valid.
+
+The assumptions of the model all appear to hold. The data being modeled is indeed Poisson counts. The survey design and execution does not prompt doubt about the independence assumption. The model in (2) does not contain any estimates of slope, only intercepts for various combinations of the factors in question, so the mononicity assumption is never in question.
+
+## Discussion
+
+```{r, discussion, echo = FALSE, fig.cap = 'Expected cell count as percent of total count with 95% confidence intervals. A nontrivial segment of Fijian Indian women are both interested in having more children and have never taken any measures toward birth control.', fig.width=12, fig.height=4}
+fiji_long2 %>%
+  mutate(lb = pred - qnorm(0.975)*1/sqrt(pred),
+         ub = pred + qnorm(0.975)*1/sqrt(pred)) %>%
+  mutate(lb = round(lb/sum(pred), 4)*100,
+         ub = round(ub/sum(pred), 4)*100,
+         ci = paste0('(', lb, '%, ', ub, '%)'),
+         usage = case_when(usage == 'not_using' ~ 'no',
+                           TRUE ~ 'yes'),
+         pred2 = paste0(round(pred/sum(pred), 4)*100, '%'),
+         other_vars = paste(education, wants_more, usage, sep = ' | ')) %>%
+  select(other_vars, age, pred, pred2, ci) %>%
+  ggplot(aes(other_vars, age, label=pred2)) + 
+  geom_point(aes(size=pred), alpha = 0.5) + 
+  geom_text(vjust = 2) +
+  geom_text(aes(label = ci), vjust = 4) + 
+  theme_minimal() + 
+  labs(x = 'Education | Desire for more children | Contraceptive usage',
+       y = 'Age') + 
+  theme(legend.position = 'none')
+```
+
+
+Figure 2 displays the expected percent of Fijian Indian women who fall into each arrangement of factors with 95% confidence intervals. It is estimated that a large percentage of Fijian Indian women both are interested in having more children and have no history of contraceptive use (47.76% summing over age buckets and education levels). Of these women, the majority (66.90%) are highly educated. While the data used in this analysis does not include information on the number of children born to each woman, it is notable that birth control utilization is just shy of 50% in this population.
+
+An opposite scenario are the active antinatalist contingent. These are women who are both not interested in having more children and have used birth control. Summing again over age buckets, we find that only 19.61% of women are in this group. This group breaks down evenly between education levels, with 50.94% being in the high education group.
+
+The remaining third of Fijian Indian women are behaviors that do not align with their interest in family expansion. An estimated 21.69% of the total population do not want children and have never used efficient contraceptives. 54.52% of these women have a high education. This group does offer an indication that there may be a lack of access to birth control in this population. The remaining 11.04% do want more children but have a history of contraceptive use. This is the most imbalanced education segment, 81.97% being highly educated.
+
+The combined percentage of women interested in expanding their family size is 58.80%. This number supports of a belief of a healthy, expanding population period. Women in their twenties constitute 64.13% of these women. Women in their thirties are the account for 32.69%. Women in their forties represent just 3.18%. The Indo-Fijian subpopulation, which at the time of the survey was the literal majority ethnic group in Fiji thanks to the influence of English colonists and heavy imigration, based on this data should continue to grow.
+
+
+# Conclusion
+
+This analysis applies a loglinear model to the Fijian WFS responses. The findings of this model support the belief that the Indo-Fijian population was on a growth trajectory. It might be surprising then that this group has severely cut back their presence in Fiji. Successful coups against Indo-Fijian controlled governments were conducted in 1987 and 2000 were both racially motivated. The diaspora movements kicked off by both of these events dramatically reduced Indo-Fijian representation and was a significant brain-drain for Fiji. Mentioned before, insights need to be interpreted in the context of the population the survey was conducted among. These interpretations, including expectations of population growth, necessarily do not account for then-future political events that altered the course and construction of the Fijian nation.
+
+\newpage
+
+# Bibliography
+
+::: {#refs}
+:::
+
+\newpage
+
+# Appendix
+The data from the WFS used in this analysis can be found [here](https://github.com/a-j-cummings/STAT435/blob/5e0e88142d98bbbd633f964f4806976d36b6b098/Exam2/fiji_contraceptives.csv). 
